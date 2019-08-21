@@ -1,5 +1,7 @@
+var baseUrls = {};
+const originIndependentUrl = /^$|^[a-z][a-z0-9+.-]*:|^[?#]/i;
 
-function unescape(html) {
+export function unescape(html) {
     // explicitly match decimal, hex, and named HTML entities
     return html.replace(/&(#(?:\d+)|(?:#x[0-9A-Fa-f]+)|(?:\w+));?/ig, function (_, n) {
         n = n.toLowerCase();
@@ -13,9 +15,10 @@ function unescape(html) {
     });
 }
 
-function edit(regex, opt) {
+export function edit(regex, opt?) {
     regex = regex.source || regex;
     opt = opt || '';
+
     return {
         replace: function (name, val) {
             val = val.source || val;
@@ -29,7 +32,7 @@ function edit(regex, opt) {
     };
 }
 
-function cleanUrl(sanitize, base, href) {
+export function cleanUrl(sanitize, base, href) {
     if (sanitize) {
         try {
             var prot = decodeURIComponent(unescape(href))
@@ -53,7 +56,7 @@ function cleanUrl(sanitize, base, href) {
     return href;
 }
 
-function resolveUrl(base, href) {
+export function resolveUrl(base, href) {
     if (!baseUrls[' ' + base]) {
         // we can ignore everything in base after the last slash of its path component,
         // but we might need to add _that_
@@ -81,10 +84,8 @@ function resolveUrl(base, href) {
         return base + href;
     }
 }
-var baseUrls = {};
-var originIndependentUrl = /^$|^[a-z][a-z0-9+.-]*:|^[?#]/i;
 
-function merge(obj) {
+export function merge(obj, ...args) {
     var i = 1,
         target,
         key;
@@ -101,7 +102,7 @@ function merge(obj) {
     return obj;
 }
 
-function splitCells(tableRow, count) {
+export function splitCells(tableRow, count) {
     // ensure that every cell-delimiting pipe has a space
     // before it to distinguish it from an escaped pipe
     var row = tableRow.replace(/\|/g, function (match, offset, str) {
@@ -136,7 +137,7 @@ function splitCells(tableRow, count) {
 // Remove trailing 'c's. Equivalent to str.replace(/c*$/, '').
 // /c*$/ is vulnerable to REDOS.
 // invert: Remove suffix of non-c chars instead. Default falsey.
-function rtrim(str, c, invert) {
+export function rtrim(str, c, invert) {
     if (str.length === 0) {
         return '';
     }
@@ -159,7 +160,7 @@ function rtrim(str, c, invert) {
     return str.substr(0, str.length - suffLen);
 }
 
-function findClosingBracket(str, b) {
+export function findClosingBracket(str, b) {
     if (str.indexOf(b[1]) === -1) {
         return -1;
     }
@@ -179,7 +180,7 @@ function findClosingBracket(str, b) {
     return -1;
 }
 
-function checkSanitizeDeprecation(opt) {
+export function checkSanitizeDeprecation(opt) {
     if (opt && opt.sanitize && !opt.silent) {
         console.warn('marked(): sanitize and sanitizer parameters are deprecated since version 0.7.0, should not be used and will be removed in the future. Read more here: https://marked.js.org/#/USING_ADVANCED.md#options');
     }

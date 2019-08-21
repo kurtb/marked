@@ -2,15 +2,18 @@
  * Block-Level Grammar
  */
 
-var block = {
-    newline: /^\n+/,
-    code: /^( {4}[^\n]+\n*)+/,
-    fences: /^ {0,3}(`{3,}|~{3,})([^`~\n]*)\n(?:|([\s\S]*?)\n)(?: {0,3}\1[~`]* *(?:\n+|$)|$)/,
-    hr: /^ {0,3}((?:- *){3,}|(?:_ *){3,}|(?:\* *){3,})(?:\n+|$)/,
-    heading: /^ {0,3}(#{1,6}) +([^\n]*?)(?: +#+)? *(?:\n+|$)/,
-    blockquote: /^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/,
-    list: /^( {0,3})(bull) [\s\S]+?(?:hr|def|\n{2,}(?! )(?!\1bull )\n*|\s*$)/,
-    html: '^ {0,3}(?:' // optional indentation
+import { noop } from "./noop";
+import { edit } from "./utils";
+
+export class Block {
+    public newline = /^\n+/;
+    public code = /^( {4}[^\n]+\n*)+/;
+    public fences: { exec: Function } = /^ {0,3}(`{3,}|~{3,})([^`~\n]*)\n(?:|([\s\S]*?)\n)(?: {0,3}\1[~`]* *(?:\n+|$)|$)/;
+    public hr = /^ {0,3}((?:- *){3,}|(?:_ *){3,}|(?:\* *){3,})(?:\n+|$)/;
+    public heading = /^ {0,3}(#{1,6}) +([^\n]*?)(?: +#+)? *(?:\n+|$)/;
+    public blockquote = /^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/;
+    public list = /^( {0,3})(bull) [\s\S]+?(?:hr|def|\n{2,}(?! )(?!\1bull )\n*|\s*$)/;
+    public html = '^ {0,3}(?:' // optional indentation
         + '<(script|pre|style)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n+|$)' // (1)
         + '|comment[^\\n]*(\\n+|$)' // (2)
         + '|<\\?[\\s\\S]*?\\?>\\n*' // (3)
@@ -19,104 +22,121 @@ var block = {
         + '|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:\\n{2,}|$)' // (6)
         + '|<(?!script|pre|style)([a-z][\\w-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:\\n{2,}|$)' // (7) open tag
         + '|</(?!script|pre|style)[a-z][\\w-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:\\n{2,}|$)' // (7) closing tag
-        + ')',
-    def: /^ {0,3}\[(label)\]: *\n? *<?([^\s>]+)>?(?:(?: +\n? *| *\n *)(title))? *(?:\n+|$)/,
-    nptable: noop,
-    table: noop,
-    lheading: /^([^\n]+)\n {0,3}(=+|-+) *(?:\n+|$)/,
+        + ')';
+
+    public def = /^ {0,3}\[(label)\]: *\n? *<?([^\s>]+)>?(?:(?: +\n? *| *\n *)(title))? *(?:\n+|$)/;
+    public nptable: { exec: Function } = noop;
+    public table: { exec: Function } = noop;
+    public lheading = /^([^\n]+)\n {0,3}(=+|-+) *(?:\n+|$)/;
+
     // regex template, placeholders will be replaced according to different paragraph
     // interruption rules of commonmark and the original markdown spec:
-    _paragraph: /^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html)[^\n]+)*)/,
-    text: /^[^\n]+/
-};
+    public _paragraph = /^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html)[^\n]+)*)/;
+    public text = /^[^\n]+/;
 
-block._label = /(?!\s*\])(?:\\[\[\]]|[^\[\]])+/;
-block._title = /(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/;
-block.def = edit(block.def)
-    .replace('label', block._label)
-    .replace('title', block._title)
-    .getRegex();
+    public _label = /(?!\s*\])(?:\\[\[\]]|[^\[\]])+/;
+    public _title = /(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/;
+    
+    public bullet = /(?:[*+-]|\d{1,9}\.)/;
+    public item = /^( *)(bull) ?[^\n]*(?:\n(?!\1bull ?)[^\n]*)*/;
+    
+    public _tag = 'address|article|aside|base|basefont|blockquote|body|caption'
+        + '|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption'
+        + '|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe'
+        + '|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option'
+        + '|p|param|section|source|summary|table|tbody|td|tfoot|th|thead|title|tr'
+        + '|track|ul';
+    public _comment = /<!--(?!-?>)[\s\S]*?-->/;
 
-block.bullet = /(?:[*+-]|\d{1,9}\.)/;
-block.item = /^( *)(bull) ?[^\n]*(?:\n(?!\1bull ?)[^\n]*)*/;
-block.item = edit(block.item, 'gm')
-    .replace(/bull/g, block.bullet)
-    .getRegex();
+    public paragraph = edit(this._paragraph)
+        .replace('hr', this.hr)
+        .replace('heading', ' {0,3}#{1,6} +')
+        .replace('|lheading', '') // setex headings don't interrupt commonmark paragraphs
+        .replace('blockquote', ' {0,3}>')
+        .replace('fences', ' {0,3}(?:`{3,}|~{3,})[^`\\n]*\\n')
+        .replace('list', ' {0,3}(?:[*+-]|1[.)]) ') // only lists starting from 1 can interrupt
+        .replace('html', '</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|!--)')
+        .replace('tag', this._tag) // pars can be interrupted by type (6) html blocks
+        .getRegex();
+    
+    constructor() {
+        this.def = edit(this.def)
+            .replace('label', this._label)
+            .replace('title', this._title)
+            .getRegex();
 
-block.list = edit(block.list)
-    .replace(/bull/g, block.bullet)
-    .replace('hr', '\\n+(?=\\1?(?:(?:- *){3,}|(?:_ *){3,}|(?:\\* *){3,})(?:\\n+|$))')
-    .replace('def', '\\n+(?=' + block.def.source + ')')
-    .getRegex();
+        this.item = edit(this.item, 'gm')
+            .replace(/bull/g, this.bullet)
+            .getRegex();
 
-block._tag = 'address|article|aside|base|basefont|blockquote|body|caption'
-    + '|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption'
-    + '|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe'
-    + '|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option'
-    + '|p|param|section|source|summary|table|tbody|td|tfoot|th|thead|title|tr'
-    + '|track|ul';
-block._comment = /<!--(?!-?>)[\s\S]*?-->/;
-block.html = edit(block.html, 'i')
-    .replace('comment', block._comment)
-    .replace('tag', block._tag)
-    .replace('attribute', / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/)
-    .getRegex();
+        this.list = edit(this.list)
+            .replace(/bull/g, this.bullet)
+            .replace('hr', '\\n+(?=\\1?(?:(?:- *){3,}|(?:_ *){3,}|(?:\\* *){3,})(?:\\n+|$))')
+            .replace('def', '\\n+(?=' + this.def.source + ')')
+            .getRegex();
 
-block.paragraph = edit(block._paragraph)
-    .replace('hr', block.hr)
-    .replace('heading', ' {0,3}#{1,6} +')
-    .replace('|lheading', '') // setex headings don't interrupt commonmark paragraphs
-    .replace('blockquote', ' {0,3}>')
-    .replace('fences', ' {0,3}(?:`{3,}|~{3,})[^`\\n]*\\n')
-    .replace('list', ' {0,3}(?:[*+-]|1[.)]) ') // only lists starting from 1 can interrupt
-    .replace('html', '</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|!--)')
-    .replace('tag', block._tag) // pars can be interrupted by type (6) html blocks
-    .getRegex();
+        this.html = edit(this.html, 'i')
+            .replace('comment', this._comment)
+            .replace('tag', this._tag)
+            .replace('attribute', / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/)
+            .getRegex();
+        
+        this.blockquote = edit(this.blockquote)
+            .replace('paragraph', this.paragraph)
+            .getRegex();
+    }
+}
 
-block.blockquote = edit(block.blockquote)
-    .replace('paragraph', block.paragraph)
-    .getRegex();
+export class GFM extends Block {
+    constructor() {
+        super();
+
+        this.nptable = /^ *([^|\n ].*\|.*)\n *([-:]+ *\|[-| :]*)(?:\n((?:.*[^>\n ].*(?:\n|$))*)\n*|$)/;
+        this.table = /^ *\|(.+)\n *\|?( *[-:]+[-| :]*)(?:\n((?: *[^>\n ].*(?:\n|$))*)\n*|$)/;
+    }
+}
+
+export class Pedantic extends Block {
+    constructor() {
+        super();
+
+        this.html = edit(
+            '^ *(?:comment *(?:\\n|\\s*$)'
+            + '|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)' // closed tag
+            + '|<tag(?:"[^"]*"|\'[^\']*\'|\\s[^\'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))')
+            .replace('comment', this._comment)
+            .replace(/tag/g, '(?!(?:'
+                + 'a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub'
+                + '|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)'
+                + '\\b)\\w+(?!:|[^\\w\\s@]*@)\\b')
+            .getRegex(),
+
+        this.def = /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/;
+        this.heading = /^ *(#{1,6}) *([^\n]+?) *(?:#+ *)?(?:\n+|$)/;
+        this.fences = noop;
+        this.paragraph = edit(this._paragraph)
+            .replace('hr', this.hr)
+            .replace('heading', ' *#{1,6} *[^\n]')
+            .replace('lheading', this.lheading)
+            .replace('blockquote', ' {0,3}>')
+            .replace('|fences', '')
+            .replace('|list', '')
+            .replace('|html', '')
+            .getRegex()
+    }
+}
 
 /**
  * Normal Block Grammar
  */
-
-block.normal = merge({}, block);
+export const normal = new Block();
 
 /**
  * GFM Block Grammar
  */
-
-block.gfm = merge({}, block.normal, {
-    nptable: /^ *([^|\n ].*\|.*)\n *([-:]+ *\|[-| :]*)(?:\n((?:.*[^>\n ].*(?:\n|$))*)\n*|$)/,
-    table: /^ *\|(.+)\n *\|?( *[-:]+[-| :]*)(?:\n((?: *[^>\n ].*(?:\n|$))*)\n*|$)/
-});
+export const gfm = new GFM();
 
 /**
  * Pedantic grammar (original John Gruber's loose markdown specification)
  */
-
-block.pedantic = merge({}, block.normal, {
-    html: edit(
-        '^ *(?:comment *(?:\\n|\\s*$)'
-        + '|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)' // closed tag
-        + '|<tag(?:"[^"]*"|\'[^\']*\'|\\s[^\'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))')
-        .replace('comment', block._comment)
-        .replace(/tag/g, '(?!(?:'
-            + 'a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub'
-            + '|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)'
-            + '\\b)\\w+(?!:|[^\\w\\s@]*@)\\b')
-        .getRegex(),
-    def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/,
-    heading: /^ *(#{1,6}) *([^\n]+?) *(?:#+ *)?(?:\n+|$)/,
-    fences: noop, // fences not supported
-    paragraph: edit(block.normal._paragraph)
-        .replace('hr', block.hr)
-        .replace('heading', ' *#{1,6} *[^\n]')
-        .replace('lheading', block.lheading)
-        .replace('blockquote', ' {0,3}>')
-        .replace('|fences', '')
-        .replace('|list', '')
-        .replace('|html', '')
-        .getRegex()
-});
+export const pedantic = new Pedantic();
