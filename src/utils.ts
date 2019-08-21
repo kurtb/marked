@@ -102,7 +102,7 @@ export function merge(obj, ...args) {
     return obj;
 }
 
-export function splitCells(tableRow, count) {
+export function splitCells(tableRow, count?) {
     // ensure that every cell-delimiting pipe has a space
     // before it to distinguish it from an escaped pipe
     var row = tableRow.replace(/\|/g, function (match, offset, str) {
@@ -137,7 +137,7 @@ export function splitCells(tableRow, count) {
 // Remove trailing 'c's. Equivalent to str.replace(/c*$/, '').
 // /c*$/ is vulnerable to REDOS.
 // invert: Remove suffix of non-c chars instead. Default falsey.
-export function rtrim(str, c, invert) {
+export function rtrim(str, c, invert?) {
     if (str.length === 0) {
         return '';
     }

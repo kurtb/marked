@@ -13,7 +13,8 @@ export class Block {
     public heading = /^ {0,3}(#{1,6}) +([^\n]*?)(?: +#+)? *(?:\n+|$)/;
     public blockquote = /^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/;
     public list = /^( {0,3})(bull) [\s\S]+?(?:hr|def|\n{2,}(?! )(?!\1bull )\n*|\s*$)/;
-    public html = '^ {0,3}(?:' // optional indentation
+
+    public _html = '^ {0,3}(?:' // optional indentation
         + '<(script|pre|style)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n+|$)' // (1)
         + '|comment[^\\n]*(\\n+|$)' // (2)
         + '|<\\?[\\s\\S]*?\\?>\\n*' // (3)
@@ -23,6 +24,7 @@ export class Block {
         + '|<(?!script|pre|style)([a-z][\\w-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:\\n{2,}|$)' // (7) open tag
         + '|</(?!script|pre|style)[a-z][\\w-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:\\n{2,}|$)' // (7) closing tag
         + ')';
+    public html: RegExp;
 
     public def = /^ {0,3}\[(label)\]: *\n? *<?([^\s>]+)>?(?:(?: +\n? *| *\n *)(title))? *(?:\n+|$)/;
     public nptable: { exec: Function } = noop;
@@ -75,7 +77,7 @@ export class Block {
             .replace('def', '\\n+(?=' + this.def.source + ')')
             .getRegex();
 
-        this.html = edit(this.html, 'i')
+        this.html = edit(this._html, 'i')
             .replace('comment', this._comment)
             .replace('tag', this._tag)
             .replace('attribute', / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/)

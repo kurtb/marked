@@ -1,2 +1,4 @@
-function noop() {}
+export function noop() {
+}
+
 noop.exec = noop;
