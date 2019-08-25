@@ -1,25 +1,41 @@
+import { Renderer } from "./renderer";
+
 /**
  * TextRenderer
  * returns only the textual part of the token
  */
 
-function TextRenderer() {}
+export class TextRenderer extends Renderer {
+  // no need for block level renderers
+  public strong(text) {
+    return text;
+  }
 
-// no need for block level renderers
+  public em(text) {
+    return text;
+  }
 
-TextRenderer.prototype.strong =
-TextRenderer.prototype.em =
-TextRenderer.prototype.codespan =
-TextRenderer.prototype.del =
-TextRenderer.prototype.text = function(text) {
-  return text;
-};
+  public codespan(text) {
+    return text;
+  }
 
-TextRenderer.prototype.link =
-TextRenderer.prototype.image = function(href, title, text) {
-  return '' + text;
-};
+  public del(text) {
+    return text;
+  }
 
-TextRenderer.prototype.br = function() {
-  return '';
-};
+  public text(text) {
+    return text;
+  };
+
+  public link(href, title, text) {
+    return '' + text;
+  }
+
+  public image(href, title, text) {
+    return '' + text;
+  }
+
+  public br() {
+    return '';
+  }
+}

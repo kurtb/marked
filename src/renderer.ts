@@ -13,7 +13,7 @@ export class Renderer {
         this.options = options || marked.defaults;
     }
 
-    public code(code, infostring, escaped) {
+    public code(code, infostring, escaped): string {
         var lang = (infostring || '').match(/\S*/)[0];
         if (this.options.highlight) {
             var out = this.options.highlight(code, lang);
@@ -37,15 +37,15 @@ export class Renderer {
             + '</code></pre>\n';
     };
 
-    public blockquote(quote) {
+    public blockquote(quote): string {
         return '<blockquote>\n' + quote + '</blockquote>\n';
     };
 
-    public html(html) {
+    public html(html): string {
         return html;
     };
 
-    public heading(text, level, raw, slugger) {
+    public heading(text, level, raw, slugger): string {
         if (this.options.headerIds) {
             return '<h'
                 + level
@@ -62,21 +62,21 @@ export class Renderer {
         return '<h' + level + '>' + text + '</h' + level + '>\n';
     };
 
-    public hr() {
+    public hr(): string {
         return this.options.xhtml ? '<hr/>\n' : '<hr>\n';
     };
 
-    public list(body, ordered, start) {
+    public list(body, ordered, start): string {
         var type = ordered ? 'ol' : 'ul',
             startatt = (ordered && start !== 1) ? (' start="' + start + '"') : '';
         return '<' + type + startatt + '>\n' + body + '</' + type + '>\n';
     };
 
-    public listitem(text) {
+    public listitem(text): string {
         return '<li>' + text + '</li>\n';
     };
 
-    public checkbox(checked) {
+    public checkbox(checked): string {
         return '<input '
             + (checked ? 'checked="" ' : '')
             + 'disabled="" type="checkbox"'
@@ -84,11 +84,11 @@ export class Renderer {
             + '> ';
     };
 
-    public paragraph(text) {
+    public paragraph(text): string {
         return '<p>' + text + '</p>\n';
     };
 
-    public table(header, body) {
+    public table(header, body): string {
         if (body) body = '<tbody>' + body + '</tbody>';
 
         return '<table>\n'
@@ -99,11 +99,11 @@ export class Renderer {
             + '</table>\n';
     };
 
-    public tablerow(content) {
+    public tablerow(content): string {
         return '<tr>\n' + content + '</tr>\n';
     };
 
-    public tablecell(content, flags) {
+    public tablecell(content, flags): string {
         var type = flags.header ? 'th' : 'td';
         var tag = flags.align
             ? '<' + type + ' align="' + flags.align + '">'
@@ -112,27 +112,27 @@ export class Renderer {
     };
 
     // span level renderer
-    public strong(text) {
+    public strong(text): string {
         return '<strong>' + text + '</strong>';
     };
 
-    public em(text) {
+    public em(text): string {
         return '<em>' + text + '</em>';
     };
 
-    public codespan(text) {
+    public codespan(text): string {
         return '<code>' + text + '</code>';
     };
 
-    public br() {
+    public br(): string {
         return this.options.xhtml ? '<br/>' : '<br>';
     };
 
-    public del(text) {
+    public del(text): string {
         return '<del>' + text + '</del>';
     };
 
-    public link(href, title, text) {
+    public link(href, title, text): string {
         href = cleanUrl(this.options.sanitize, this.options.baseUrl, href);
         if (href === null) {
             return text;
@@ -145,7 +145,7 @@ export class Renderer {
         return out;
     };
 
-    public image(href, title, text) {
+    public image(href, title, text): string {
         href = cleanUrl(this.options.sanitize, this.options.baseUrl, href);
         if (href === null) {
             return text;
@@ -159,7 +159,7 @@ export class Renderer {
         return out;
     };
 
-    public text(text) {
+    public text(text): string {
         return text;
     };
 }
