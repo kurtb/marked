@@ -10,7 +10,8 @@ export class Inline {
     public escape = /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/;
     public autolink = /^<(scheme:[^\s\x00-\x1f<>]*|email)>/;
     public url: RegExp = noop as any;
-    public tag = '^comment'
+    public tag: RegExp;
+    public _tag = '^comment'
         + '|^</[a-zA-Z][\\w:-]*\\s*>' // self-closing tag
         + '|^<[a-zA-Z][\\w-]*(?:attribute)*?\\s*/?>' // open tag
         + '|^<\\?[\\s\\S]*?\\?>' // processing instruction, e.g. <?php ?>
@@ -25,6 +26,8 @@ export class Inline {
     public br = /^( {2,}|\\)\n(?!\s*$)/;
     public del: RegExp = noop as any;
     public text = /^(`+|[^`])(?:[\s\S]*?(?:(?=[\\<!\[`*]|\b_|$)|[^ ](?= {2,}\n))|(?= {2,}\n))/;
+
+    public _backpedal: RegExp; 
 
     // list of punctuation marks from common mark spec
     // without ` and ] to workaround Rule 17 (inline code blocks/links)
@@ -46,7 +49,7 @@ export class Inline {
             .replace('email', this._email)
             .getRegex();
 
-        this.tag = edit(this.tag)
+        this.tag = edit(this._tag)
             .replace('comment', block.normal._comment)
             .replace('attribute', this._attribute)
             .getRegex();

@@ -7,7 +7,7 @@ import { cleanUrl } from "./utils";
 import * as marked from "./marked";
 
 export class Renderer {
-    private options;
+    public options;
 
     constructor(options?) {
         this.options = options || marked.defaults;
