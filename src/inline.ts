@@ -2,107 +2,132 @@
  * Inline-Level Grammar
  */
 
-var inline = {
-    escape: /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/,
-    autolink: /^<(scheme:[^\s\x00-\x1f<>]*|email)>/,
-    url: noop,
-    tag: '^comment'
+import * as block from "./block";
+import { noop } from "./noop";
+import { edit } from "./utils";
+
+export class Inline {
+    public escape = /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/;
+    public autolink = /^<(scheme:[^\s\x00-\x1f<>]*|email)>/;
+    public url: RegExp = noop as any;
+    public tag = '^comment'
         + '|^</[a-zA-Z][\\w:-]*\\s*>' // self-closing tag
         + '|^<[a-zA-Z][\\w-]*(?:attribute)*?\\s*/?>' // open tag
         + '|^<\\?[\\s\\S]*?\\?>' // processing instruction, e.g. <?php ?>
         + '|^<![a-zA-Z]+\\s[\\s\\S]*?>' // declaration, e.g. <!DOCTYPE html>
-        + '|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>', // CDATA section
-    link: /^!?\[(label)\]\(\s*(href)(?:\s+(title))?\s*\)/,
-    reflink: /^!?\[(label)\]\[(?!\s*\])((?:\\[\[\]]?|[^\[\]\\])+)\]/,
-    nolink: /^!?\[(?!\s*\])((?:\[[^\[\]]*\]|\\[\[\]]|[^\[\]])*)\](?:\[\])?/,
-    strong: /^__([^\s_])__(?!_)|^\*\*([^\s*])\*\*(?!\*)|^__([^\s][\s\S]*?[^\s])__(?!_)|^\*\*([^\s][\s\S]*?[^\s])\*\*(?!\*)/,
-    em: /^_([^\s_])_(?!_)|^\*([^\s*<\[])\*(?!\*)|^_([^\s<][\s\S]*?[^\s_])_(?!_|[^\spunctuation])|^_([^\s_<][\s\S]*?[^\s])_(?!_|[^\spunctuation])|^\*([^\s<"][\s\S]*?[^\s\*])\*(?!\*|[^\spunctuation])|^\*([^\s*"<\[][\s\S]*?[^\s])\*(?!\*)/,
-    code: /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/,
-    br: /^( {2,}|\\)\n(?!\s*$)/,
-    del: noop,
-    text: /^(`+|[^`])(?:[\s\S]*?(?:(?=[\\<!\[`*]|\b_|$)|[^ ](?= {2,}\n))|(?= {2,}\n))/
-};
+        + '|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>'; // CDATA section
+    public link = /^!?\[(label)\]\(\s*(href)(?:\s+(title))?\s*\)/;
+    public reflink = /^!?\[(label)\]\[(?!\s*\])((?:\\[\[\]]?|[^\[\]\\])+)\]/;
+    public nolink = /^!?\[(?!\s*\])((?:\[[^\[\]]*\]|\\[\[\]]|[^\[\]])*)\](?:\[\])?/;
+    public strong = /^__([^\s_])__(?!_)|^\*\*([^\s*])\*\*(?!\*)|^__([^\s][\s\S]*?[^\s])__(?!_)|^\*\*([^\s][\s\S]*?[^\s])\*\*(?!\*)/;
+    public em = /^_([^\s_])_(?!_)|^\*([^\s*<\[])\*(?!\*)|^_([^\s<][\s\S]*?[^\s_])_(?!_|[^\spunctuation])|^_([^\s_<][\s\S]*?[^\s])_(?!_|[^\spunctuation])|^\*([^\s<"][\s\S]*?[^\s\*])\*(?!\*|[^\spunctuation])|^\*([^\s*"<\[][\s\S]*?[^\s])\*(?!\*)/;
+    public code = /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/;
+    public br = /^( {2,}|\\)\n(?!\s*$)/;
+    public del: RegExp = noop as any;
+    public text = /^(`+|[^`])(?:[\s\S]*?(?:(?=[\\<!\[`*]|\b_|$)|[^ ](?= {2,}\n))|(?= {2,}\n))/;
 
-// list of punctuation marks from common mark spec
-// without ` and ] to workaround Rule 17 (inline code blocks/links)
-inline._punctuation = '!"#$%&\'()*+,\\-./:;<=>?@\\[^_{|}~';
-inline.em = edit(inline.em).replace(/punctuation/g, inline._punctuation).getRegex();
+    // list of punctuation marks from common mark spec
+    // without ` and ] to workaround Rule 17 (inline code blocks/links)
+    public _punctuation = '!"#$%&\'()*+,\\-./:;<=>?@\\[^_{|}~';
+    public _escapes = /\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/g;
+    public _scheme = /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/;
+    public _email = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/;
+    public _attribute = /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/;
 
-inline._escapes = /\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/g;
+    public _label = /(?:\[[^\[\]]*\]|\\.|`[^`]*`|[^\[\]\\`])*?/;
+    public _href = /<(?:\\[<>]?|[^\s<>\\])*>|[^\s\x00-\x1f]*/;
+    public _title = /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/;
 
-inline._scheme = /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/;
-inline._email = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/;
-inline.autolink = edit(inline.autolink)
-    .replace('scheme', inline._scheme)
-    .replace('email', inline._email)
-    .getRegex();
+    constructor() {
+        this.em = edit(this.em).replace(/punctuation/g, this._punctuation).getRegex();
 
-inline._attribute = /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/;
+        this.autolink = edit(this.autolink)
+            .replace('scheme', this._scheme)
+            .replace('email', this._email)
+            .getRegex();
 
-inline.tag = edit(inline.tag)
-    .replace('comment', block._comment)
-    .replace('attribute', inline._attribute)
-    .getRegex();
+        this.tag = edit(this.tag)
+            .replace('comment', block.normal._comment)
+            .replace('attribute', this._attribute)
+            .getRegex();
 
-inline._label = /(?:\[[^\[\]]*\]|\\.|`[^`]*`|[^\[\]\\`])*?/;
-inline._href = /<(?:\\[<>]?|[^\s<>\\])*>|[^\s\x00-\x1f]*/;
-inline._title = /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/;
-
-inline.link = edit(inline.link)
-    .replace('label', inline._label)
-    .replace('href', inline._href)
-    .replace('title', inline._title)
-    .getRegex();
-
-inline.reflink = edit(inline.reflink)
-    .replace('label', inline._label)
-    .getRegex();
-
-/**
- * Normal Inline Grammar
- */
-
-inline.normal = merge({}, inline);
+        this.link = edit(this.link)
+            .replace('label', this._label)
+            .replace('href', this._href)
+            .replace('title', this._title)
+            .getRegex();
+    
+        this.reflink = edit(this.reflink)
+            .replace('label', this._label)
+            .getRegex();
+    }
+}
 
 /**
  * Pedantic Inline Grammar
  */
+export class Pedantic extends Inline {
+    public strong = /^__(?=\S)([\s\S]*?\S)__(?!_)|^\*\*(?=\S)([\s\S]*?\S)\*\*(?!\*)/;
+    public em = /^_(?=\S)([\s\S]*?\S)_(?!_)|^\*(?=\S)([\s\S]*?\S)\*(?!\*)/;
 
-inline.pedantic = merge({}, inline.normal, {
-    strong: /^__(?=\S)([\s\S]*?\S)__(?!_)|^\*\*(?=\S)([\s\S]*?\S)\*\*(?!\*)/,
-    em: /^_(?=\S)([\s\S]*?\S)_(?!_)|^\*(?=\S)([\s\S]*?\S)\*(?!\*)/,
-    link: edit(/^!?\[(label)\]\((.*?)\)/)
-        .replace('label', inline._label)
-        .getRegex(),
-    reflink: edit(/^!?\[(label)\]\s*\[([^\]]*)\]/)
-        .replace('label', inline._label)
-        .getRegex()
-});
+    constructor() {
+        super();
+
+        this.link = edit(/^!?\[(label)\]\((.*?)\)/)
+            .replace('label', this._label)
+            .getRegex();
+
+        this.reflink = edit(/^!?\[(label)\]\s*\[([^\]]*)\]/)
+            .replace('label', this._label)
+            .getRegex();
+    }
+}
 
 /**
  * GFM Inline Grammar
  */
+export class GFM extends Inline {
+    public _extended_email = /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![-_])/;
+    public url = /^((?:ftp|https?):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/;
+    public _backpedal = /(?:[^?!.,:;*_~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_~)]+(?!$))+/;
+    public del = /^~+(?=\S)([\s\S]*?\S)~+/;
+    public text = /^(`+|[^`])(?:[\s\S]*?(?:(?=[\\<!\[`*~]|\b_|https?:\/\/|ftp:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))|(?= {2,}\n|[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))/;
 
-inline.gfm = merge({}, inline.normal, {
-    escape: edit(inline.escape).replace('])', '~|])').getRegex(),
-    _extended_email: /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![-_])/,
-    url: /^((?:ftp|https?):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/,
-    _backpedal: /(?:[^?!.,:;*_~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_~)]+(?!$))+/,
-    del: /^~+(?=\S)([\s\S]*?\S)~+/,
-    text: /^(`+|[^`])(?:[\s\S]*?(?:(?=[\\<!\[`*~]|\b_|https?:\/\/|ftp:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))|(?= {2,}\n|[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))/
-});
+    constructor() {
+        super();
 
-inline.gfm.url = edit(inline.gfm.url, 'i')
-    .replace('email', inline.gfm._extended_email)
-    .getRegex();
+        this.escape = edit(this.escape).replace('])', '~|])').getRegex(),
+        
+        this.url = edit(this.url, 'i')
+            .replace('email', this._extended_email)
+            .getRegex();
+        
+    }
+}
+
 /**
  * GFM + Line Breaks Inline Grammar
  */
+export class Breaks extends GFM {
+    constructor() {
+        super();
 
-inline.breaks = merge({}, inline.gfm, {
-    br: edit(inline.br).replace('{2,}', '*').getRegex(),
-    text: edit(inline.gfm.text)
-        .replace('\\b_', '\\b_| {2,}\\n')
-        .replace(/\{2,\}/g, '*')
-        .getRegex()
-});
+        this.br = edit(this.br).replace('{2,}', '*').getRegex();
+
+        this.text = edit(this.text)
+            .replace('\\b_', '\\b_| {2,}\\n')
+            .replace(/\{2,\}/g, '*')
+            .getRegex();
+    }
+}
+
+/**
+ * Normal Inline Grammar
+ */
+export const normal = new Inline();
+
+export const pedantic = new Pedantic();
+
+export const gfm = new GFM();
+
+export const breaks = new Breaks();

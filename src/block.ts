@@ -8,7 +8,7 @@ import { edit } from "./utils";
 export class Block {
     public newline = /^\n+/;
     public code = /^( {4}[^\n]+\n*)+/;
-    public fences: { exec: Function } = /^ {0,3}(`{3,}|~{3,})([^`~\n]*)\n(?:|([\s\S]*?)\n)(?: {0,3}\1[~`]* *(?:\n+|$)|$)/;
+    public fences: RegExp = /^ {0,3}(`{3,}|~{3,})([^`~\n]*)\n(?:|([\s\S]*?)\n)(?: {0,3}\1[~`]* *(?:\n+|$)|$)/;
     public hr = /^ {0,3}((?:- *){3,}|(?:_ *){3,}|(?:\* *){3,})(?:\n+|$)/;
     public heading = /^ {0,3}(#{1,6}) +([^\n]*?)(?: +#+)? *(?:\n+|$)/;
     public blockquote = /^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/;
@@ -27,8 +27,8 @@ export class Block {
     public html: RegExp;
 
     public def = /^ {0,3}\[(label)\]: *\n? *<?([^\s>]+)>?(?:(?: +\n? *| *\n *)(title))? *(?:\n+|$)/;
-    public nptable: { exec: Function } = noop;
-    public table: { exec: Function } = noop;
+    public nptable: RegExp = noop as any;
+    public table: RegExp = noop as any;
     public lheading = /^([^\n]+)\n {0,3}(=+|-+) *(?:\n+|$)/;
 
     // regex template, placeholders will be replaced according to different paragraph
@@ -115,7 +115,7 @@ export class Pedantic extends Block {
 
         this.def = /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/;
         this.heading = /^ *(#{1,6}) *([^\n]+?) *(?:#+ *)?(?:\n+|$)/;
-        this.fences = noop;
+        this.fences = noop as any;
         this.paragraph = edit(this._paragraph)
             .replace('hr', this.hr)
             .replace('heading', ' *#{1,6} *[^\n]')
