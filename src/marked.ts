@@ -2,7 +2,13 @@
  * Marked
  */
 
-function marked(src, opt, callback) {
+import { escape } from "./escape";
+import { Lexer } from "./lexer";
+import { Parser } from "./parser";
+import { Renderer } from "./renderer";
+import { checkSanitizeDeprecation, merge } from "./utils";
+
+export function marked(src, opt, callback) {
     // throw error in case of non string input
     if (typeof src === 'undefined' || src === null) {
         throw new Error('marked(): input parameter is undefined or null');
@@ -18,7 +24,7 @@ function marked(src, opt, callback) {
             opt = null;
         }
 
-        opt = merge({}, marked.defaults, opt || {});
+        opt = merge({}, defaults, opt || {});
         checkSanitizeDeprecation(opt);
 
         var highlight = opt.highlight,
@@ -34,7 +40,7 @@ function marked(src, opt, callback) {
 
         pending = tokens.length;
 
-        var done = function (err) {
+        var done = function (err?) {
             if (err) {
                 opt.highlight = highlight;
                 return callback(err);
@@ -83,12 +89,12 @@ function marked(src, opt, callback) {
         return;
     }
     try {
-        if (opt) opt = merge({}, marked.defaults, opt);
+        if (opt) opt = merge({}, defaults, opt);
         checkSanitizeDeprecation(opt);
         return Parser.parse(Lexer.lex(src, opt), opt);
     } catch (e) {
         e.message += '\nPlease report this to https://github.com/markedjs/marked.';
-        if ((opt || marked.defaults).silent) {
+        if ((opt || defaults).silent) {
             return '<p>An error occurred:</p><pre>'
                 + escape(e.message + '', true)
                 + '</pre>';
@@ -101,13 +107,12 @@ function marked(src, opt, callback) {
  * Options
  */
 
-marked.options =
-    marked.setOptions = function (opt) {
-        merge(marked.defaults, opt);
-        return marked;
-    };
+export function setOptions(opt) {
+    merge(defaults, opt);
+    return marked;
+}
 
-marked.getDefaults = function () {
+export function getDefaults() {
     return {
         baseUrl: null,
         breaks: false,
@@ -128,24 +133,4 @@ marked.getDefaults = function () {
     };
 };
 
-marked.defaults = marked.getDefaults();
-
-/**
- * Expose
- */
-
-marked.Parser = Parser;
-marked.parser = Parser.parse;
-
-marked.Renderer = Renderer;
-marked.TextRenderer = TextRenderer;
-
-marked.Lexer = Lexer;
-marked.lexer = Lexer.lex;
-
-marked.InlineLexer = InlineLexer;
-marked.inlineLexer = InlineLexer.output;
-
-marked.Slugger = Slugger;
-
-marked.parse = marked;
+export const defaults = getDefaults();

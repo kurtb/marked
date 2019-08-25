@@ -2,7 +2,7 @@
  * Slugger generates header id
  */
 
-class Slugger {
+export class Slugger {
     public seen = {};
 
     /**

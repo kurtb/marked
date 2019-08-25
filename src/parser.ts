@@ -5,8 +5,9 @@
 import * as marked from "./marked";
 import { Renderer } from "./renderer";
 import { InlineLexer } from "./inlineLexer";
-import { merge } from "./utils";
+import { Slugger } from "./slugger";
 import { TextRenderer } from "./textRenderer";
+import { merge } from "./utils";
 
 export class Parser {
     /**
